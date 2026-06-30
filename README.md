@@ -9,11 +9,16 @@ Built with **Streamlit** and **SQLite** — runs anywhere Python is installed wi
 ## Features
 
 - **Live availability polling** — background scheduler checks Recreation.gov on a configurable interval (default: 15 min)
-- **Watchlist** — specify campground, date range, minimum consecutive nights, and optional site-type filter
-- **Discord notifications** — rich embed sent automatically when a site is found
-- **Manual check** — trigger an immediate check for any entry from the dashboard
+- **Flexible watchlist filters** — date range, min/max consecutive nights, site type, check-in day, check-out day
+- **Multi-mode campground search** — search by campground name, park/rec area name, park/rec area ID, facility ID, or state
+- **Discord notifications** — grouped by site type and date window; one message per unique availability window instead of one per site
+- **Smart deduplication** — notifications reset nightly so you get a fresh alert each morning but no spam during the day
+- **Manual check** — trigger an immediate re-check for any watchlist entry from the dashboard
+- **Edit in place** — update filters on any watchlist entry without recreating it
 - **Pause / resume** — suspend monitoring without losing your entry
 - **Direct booking link** — every result links straight to the Recreation.gov booking page
+- **Timezone support** — configure your local timezone via `.env`
+- **Rate limiting** — global 45 req/min throttle to stay safely within Recreation.gov API limits
 
 ---
 
@@ -57,10 +62,15 @@ Edit `.env`:
 ```env
 RIDB_API_KEY=your_key_here           # free at ridb.recreation.gov/apikeys
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
-CHECK_INTERVAL_MINUTES=15
+CHECK_INTERVAL_MINUTES=60
+TIMEZONE=America/New_York            # any tz database name, e.g. America/Los_Angeles
 ```
 
+**Getting an RIDB API key:** Register at [ridb.recreation.gov/apikeys](https://ridb.recreation.gov/apikeys) — it's free.
+
 **Getting a Discord webhook URL:** In any Discord channel → Edit Channel → Integrations → Webhooks → New Webhook → Copy URL.
+
+The app auto-seeds the Discord webhook from `DISCORD_WEBHOOK_URL` on first startup, so you don't need to add it through the Settings page.
 
 ### 3. Run
 
@@ -75,14 +85,13 @@ Open **http://localhost:8501** in your browser.
 ## Deploying on a home server (Proxmox, Raspberry Pi, etc.)
 
 ```bash
-# Install dependencies once
 pip install -r requirements.txt
 
-# Run in the background with nohup
+# Run in the background
 nohup streamlit run app.py --server.headless true &
-
-# Or add a systemd service so it starts on boot (see docs/systemd.md)
 ```
+
+To update, `git pull` from the repo directory — your `.env` and database are not tracked by git and will be untouched.
 
 ---
 
@@ -91,15 +100,15 @@ nohup streamlit run app.py --server.headless true &
 ```
 ├── app.py                  # Streamlit entry point, startup, navigation
 ├── core/
-│   ├── config.py           # Settings from .env
-│   ├── database.py         # SQLAlchemy + SQLite setup
+│   ├── config.py           # Settings loaded from .env
+│   ├── database.py         # SQLAlchemy + SQLite setup, schema migrations
 │   ├── models.py           # ORM models (WatchlistEntry, AvailabilityResult, Webhook)
-│   ├── recreation_gov.py   # Recreation.gov API client
-│   ├── availability.py     # Availability check + consecutive-night logic
+│   ├── recreation_gov.py   # RIDB + availability API client, rate limiter
+│   ├── availability.py     # Availability check, consecutive-night and day-of-week logic
 │   ├── notifications.py    # Discord / Slack / generic webhook dispatch
-│   └── scheduler.py        # APScheduler background job
-├── pages/
-│   ├── dashboard.py        # Watchlist view with check / pause / delete actions
+│   └── scheduler.py        # APScheduler background jobs
+├── views/
+│   ├── dashboard.py        # Watchlist with check / edit / pause / delete
 │   ├── search.py           # Campground search + add to watchlist
 │   └── settings.py         # Webhook management, app status
 ├── .streamlit/

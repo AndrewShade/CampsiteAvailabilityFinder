@@ -7,6 +7,7 @@ from core.recreation_gov import (
     search_by_name,
     search_by_park,
     search_by_facility_id,
+    search_by_rec_area_id,
     search_by_state,
     get_site_types,
 )
@@ -29,7 +30,7 @@ _US_STATES = {
     "WI": "Wisconsin", "WY": "Wyoming",
 }
 
-_MODES = ["Campground Name", "Park / Rec Area", "Facility ID", "State"]
+_MODES = ["Campground Name", "Park / Rec Area", "Park / Rec Area ID", "Facility ID", "State"]
 
 _DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
@@ -80,6 +81,13 @@ def _search_input(mode: str) -> tuple[str, bool]:
         value = st.text_input("Park or recreation area", placeholder="e.g. Yosemite, Glacier, Grand Teton", label_visibility="collapsed")
         return value, bool(value and len(value.strip()) >= 2)
 
+    if mode == "Park / Rec Area ID":
+        value = st.text_input("Park or Rec Area ID", placeholder="e.g. 2991 (Yosemite)", label_visibility="collapsed")
+        ready = bool(value and value.strip().isdigit())
+        if value and not ready:
+            st.caption("Enter a numeric rec area ID.")
+        return value, ready
+
     if mode == "Facility ID":
         value = st.text_input("Facility ID", placeholder="e.g. 232447", label_visibility="collapsed")
         ready = bool(value and value.strip().isdigit())
@@ -108,6 +116,8 @@ def _run_search(mode: str, value: str) -> list[dict]:
         return search_by_name(value)
     if mode == "Park / Rec Area":
         return search_by_park(value)
+    if mode == "Park / Rec Area ID":
+        return search_by_rec_area_id(value)
     if mode == "Facility ID":
         return search_by_facility_id(value)
     if mode == "State":

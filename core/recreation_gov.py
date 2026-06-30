@@ -30,6 +30,11 @@ def _get(client: httpx.Client, url: str, **kwargs) -> httpx.Response:
     return client.get(url, **kwargs)
 
 
+def _is_campground(facility: dict) -> bool:
+    type_str = (facility.get("FacilityTypeDescription") or facility.get("FacilityType") or "").upper()
+    return "CAMPGROUND" in type_str
+
+
 def search_by_name(query: str) -> list[dict]:
     with httpx.Client(timeout=10) as client:
         resp = _get(client,
@@ -38,7 +43,7 @@ def search_by_name(query: str) -> list[dict]:
             headers=_HEADERS,
         )
         resp.raise_for_status()
-        results = [_parse_facility(f) for f in resp.json().get("RECDATA", [])]
+        results = [_parse_facility(f) for f in resp.json().get("RECDATA", []) if _is_campground(f)]
 
     results.sort(key=lambda r: _name_score(query, r["facility_name"]), reverse=True)
     return results
@@ -116,6 +121,12 @@ def get_campsite_type_map(facility_id: str) -> dict[str, str]:
     }
 
 
+def search_by_rec_area_id(rec_area_id: str) -> list[dict]:
+    with httpx.Client(timeout=10) as client:
+        facilities = _facilities_for_rec_area(client, rec_area_id.strip())
+    return [_parse_facility(f) for f in facilities]
+
+
 def search_by_state(state_code: str) -> list[dict]:
     with httpx.Client(timeout=10) as client:
         resp = _get(client,
@@ -124,7 +135,7 @@ def search_by_state(state_code: str) -> list[dict]:
             headers=_HEADERS,
         )
         resp.raise_for_status()
-        return [_parse_facility(f) for f in resp.json().get("RECDATA", [])]
+        return [_parse_facility(f) for f in resp.json().get("RECDATA", []) if _is_campground(f)]
 
 
 def _search_rec_area_ids(client: httpx.Client, query: str) -> list[str]:
@@ -141,12 +152,12 @@ def _search_rec_area_ids(client: httpx.Client, query: str) -> list[str]:
 def _facilities_for_rec_area(client: httpx.Client, rec_area_id: str) -> list[dict]:
     resp = client.get(
         f"{RIDB_BASE}/recareas/{rec_area_id}/facilities",
-        params={"apikey": settings.ridb_api_key, "facilitytype": "Campground", "limit": 50},
+        params={"apikey": settings.ridb_api_key, "limit": 100},
         headers=_HEADERS,
     )
     if resp.is_error:
         return []
-    return resp.json().get("RECDATA", [])
+    return [f for f in resp.json().get("RECDATA", []) if _is_campground(f)]
 
 
 def _parse_facility(facility: dict) -> dict:

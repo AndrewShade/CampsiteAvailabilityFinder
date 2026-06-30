@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     check_interval_minutes: int = 15
     database_url: str = "sqlite:///./data/campfinder.db"
     timezone: str = "UTC"
+    discord_webhook_url: str = ""
 
 
 @lru_cache

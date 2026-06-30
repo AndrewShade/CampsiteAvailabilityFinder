@@ -1,10 +1,21 @@
 import json
+from datetime import timezone
+from zoneinfo import ZoneInfo
 import streamlit as st
 from sqlalchemy.orm import selectinload
+from core.config import get_settings
 from core.database import get_db
 from core.models import WatchlistEntry
 from core.availability import check_entry
 from core.notifications import send_notifications
+
+_tz = ZoneInfo(get_settings().timezone)
+
+
+def _fmt_dt(dt) -> str:
+    if not dt:
+        return ""
+    return dt.replace(tzinfo=timezone.utc).astimezone(_tz).strftime("%b %d %I:%M %p")
 
 
 def page():
@@ -43,7 +54,7 @@ def _render_entry(entry: dict):
             if entry["site_types"]:
                 parts.append(f"Types: {entry['site_types']}")
             if entry["last_checked"]:
-                parts.append(f"*Checked {entry['last_checked'].strftime('%b %d %I:%M %p')}*")
+                parts.append(f"*Checked {_fmt_dt(entry['last_checked'])}*")
             st.caption("  ·  ".join(parts))
 
         with actions:

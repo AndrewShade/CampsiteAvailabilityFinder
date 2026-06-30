@@ -24,9 +24,9 @@ def startup():
 
 startup()
 
-dashboard = st.Page("pages/dashboard.py", title="Dashboard", icon="📊", default=True)
-search = st.Page("pages/search.py", title="Search", icon="🔍")
-settings = st.Page("pages/settings.py", title="Settings", icon="⚙️")
+dashboard = st.Page("views/dashboard.py", title="Dashboard", icon="📊", default=True)
+search = st.Page("views/search.py", title="Search", icon="🔍")
+settings = st.Page("views/settings.py", title="Settings", icon="⚙️")
 
 pg = st.navigation(
     {"Monitor": [dashboard, search], "Configure": [settings]},

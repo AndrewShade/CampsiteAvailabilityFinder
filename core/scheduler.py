@@ -6,7 +6,7 @@ from .config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-_scheduler = BackgroundScheduler(timezone="UTC")
+_scheduler = BackgroundScheduler(timezone=settings.timezone)
 
 
 def _run_checks() -> None:

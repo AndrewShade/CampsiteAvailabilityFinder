@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     ridb_api_key: str = ""
     check_interval_minutes: int = 15
     database_url: str = "sqlite:///./data/campfinder.db"
+    timezone: str = "UTC"
 
 
 @lru_cache

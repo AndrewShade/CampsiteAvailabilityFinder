@@ -16,6 +16,8 @@ class WatchlistEntry(Base):
     end_date = Column(Date, nullable=False)
     min_nights = Column(Integer, default=1)
     site_types = Column(String, default="")  # comma-separated filter, empty = any
+    check_in_day = Column(String, nullable=True)   # comma-separated 0–6 (Mon–Sun), None = any
+    check_out_day = Column(String, nullable=True)  # day they leave; last night = each checkout day - 1
 
     status = Column(String, default="watching")  # watching | found | paused
     last_checked = Column(DateTime, nullable=True)

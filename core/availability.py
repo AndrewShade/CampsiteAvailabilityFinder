@@ -26,6 +26,7 @@ def check_entry(entry: WatchlistEntry, db: Session) -> list[AvailabilityResult]:
             continue
 
         windows = _consecutive_windows(site.get("availabilities", {}), desired, entry.min_nights)
+        windows = _filter_by_days(windows, entry.check_in_day, entry.check_out_day)
         if not windows:
             continue
 
@@ -55,6 +56,25 @@ def check_entry(entry: WatchlistEntry, db: Session) -> list[AvailabilityResult]:
     for r in new_results:
         db.refresh(r)
     return new_results
+
+
+def _filter_by_days(
+    windows: list[list[str]], check_in_day: str | None, check_out_day: str | None
+) -> list[list[str]]:
+    in_days = {int(d) for d in check_in_day.split(",") if d} if check_in_day else set()
+    out_days = {int(d) for d in check_out_day.split(",") if d} if check_out_day else set()
+    if not in_days and not out_days:
+        return windows
+    filtered = []
+    for window in windows:
+        if in_days and date.fromisoformat(window[0]).weekday() not in in_days:
+            continue
+        # checkout is the morning after the last night
+        checkout = date.fromisoformat(window[-1]) + timedelta(days=1)
+        if out_days and checkout.weekday() not in out_days:
+            continue
+        filtered.append(window)
+    return filtered
 
 
 def _consecutive_windows(

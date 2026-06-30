@@ -12,11 +12,26 @@ st.set_page_config(
 @st.cache_resource
 def startup():
     """Runs once across all sessions — initializes DB and starts the background scheduler."""
-    from core.database import init_db
+    from core.config import get_settings
+    from core.database import init_db, get_db
+    from core.models import NotificationWebhook
     from core.scheduler import get_scheduler
 
     Path("data").mkdir(exist_ok=True)
     init_db()
+
+    cfg = get_settings()
+    if cfg.discord_webhook_url:
+        with get_db() as db:
+            exists = db.query(NotificationWebhook).filter_by(url=cfg.discord_webhook_url).first()
+            if not exists:
+                db.add(NotificationWebhook(
+                    name="Discord",
+                    webhook_type="discord",
+                    url=cfg.discord_webhook_url,
+                ))
+                db.commit()
+
     scheduler = get_scheduler()
     if not scheduler.running:
         scheduler.start()

@@ -26,7 +26,7 @@ def check_entry(entry: WatchlistEntry, db: Session) -> list[AvailabilityResult]:
             continue
 
         windows = _consecutive_windows(site.get("availabilities", {}), desired, entry.min_nights)
-        windows = _filter_by_days(windows, entry.check_in_day, entry.check_out_day)
+        windows = _filter_by_days(windows, entry.check_in_day, entry.check_out_day, entry.min_nights)
         if not windows:
             continue
 
@@ -59,22 +59,31 @@ def check_entry(entry: WatchlistEntry, db: Session) -> list[AvailabilityResult]:
 
 
 def _filter_by_days(
-    windows: list[list[str]], check_in_day: str | None, check_out_day: str | None
+    windows: list[list[str]], check_in_day: str | None, check_out_day: str | None, min_nights: int
 ) -> list[list[str]]:
     in_days = {int(d) for d in check_in_day.split(",") if d} if check_in_day else set()
     out_days = {int(d) for d in check_out_day.split(",") if d} if check_out_day else set()
     if not in_days and not out_days:
         return windows
-    filtered = []
+
+    # Slide through each window extracting sub-windows that satisfy the day constraints.
+    # A whole window like Thu–Sun must not be rejected just because it doesn't start on Friday —
+    # there may be a valid Fri check-in sub-window inside it.
+    result: list[list[str]] = []
+    seen: set[tuple] = set()
     for window in windows:
-        if in_days and date.fromisoformat(window[0]).weekday() not in in_days:
-            continue
-        # checkout is the morning after the last night
-        checkout = date.fromisoformat(window[-1]) + timedelta(days=1)
-        if out_days and checkout.weekday() not in out_days:
-            continue
-        filtered.append(window)
-    return filtered
+        for i in range(len(window)):
+            if in_days and date.fromisoformat(window[i]).weekday() not in in_days:
+                continue
+            for j in range(i + min_nights - 1, len(window)):
+                checkout = date.fromisoformat(window[j]) + timedelta(days=1)
+                if out_days and checkout.weekday() not in out_days:
+                    continue
+                sub = tuple(window[i:j + 1])
+                if sub not in seen:
+                    seen.add(sub)
+                    result.append(list(sub))
+    return result
 
 
 def _consecutive_windows(

@@ -80,24 +80,40 @@ def search_by_facility_id(facility_id: str) -> list[dict]:
         return [_parse_facility(resp.json())]
 
 
+_campsite_cache: dict[str, list[dict]] = {}  # facility_id -> raw RECDATA
+
+
+def _fetch_campsites(facility_id: str) -> list[dict]:
+    if facility_id not in _campsite_cache:
+        with httpx.Client(timeout=10) as client:
+            resp = _get(client,
+                f"{RIDB_BASE}/facilities/{facility_id}/campsites",
+                params={"apikey": settings.ridb_api_key, "limit": 500},
+                headers=_HEADERS,
+            )
+            _campsite_cache[facility_id] = [] if resp.is_error else resp.json().get("RECDATA", [])
+    return _campsite_cache[facility_id]
+
+
 def get_site_types(facility_id: str) -> dict[str, int]:
     """Return {CampsiteType: count} for overnight sites, sorted alphabetically."""
-    with httpx.Client(timeout=10) as client:
-        resp = _get(client,
-            f"{RIDB_BASE}/facilities/{facility_id}/campsites",
-            params={"apikey": settings.ridb_api_key, "limit": 500},
-            headers=_HEADERS,
-        )
-        if resp.is_error:
-            return {}
     counts: dict[str, int] = {}
-    for site in resp.json().get("RECDATA", []):
+    for site in _fetch_campsites(facility_id):
         if site.get("TypeOfUse", "").upper() not in ("OVERNIGHT", ""):
             continue
         t = site.get("CampsiteType", "").strip().upper()
         if t:
             counts[t] = counts.get(t, 0) + 1
     return dict(sorted(counts.items()))
+
+
+def get_campsite_type_map(facility_id: str) -> dict[str, str]:
+    """Return {campsite_id: CampsiteType} built from RIDB, used to resolve types during availability checks."""
+    return {
+        str(s["CampsiteID"]): s.get("CampsiteType", "").strip().upper()
+        for s in _fetch_campsites(facility_id)
+        if s.get("CampsiteID")
+    }
 
 
 def search_by_state(state_code: str) -> list[dict]:

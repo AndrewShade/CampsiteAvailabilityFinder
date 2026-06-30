@@ -161,15 +161,21 @@ def _render_results(results: list[dict]) -> None:
                 check_in_day = ",".join(str(_DAYS.index(d)) for d in checkin_day_names) or None
                 check_out_day = ",".join(str(_DAYS.index(d)) for d in checkout_day_names) or None
 
-                c5, c6 = st.columns(2)
+                c5, c6, c7 = st.columns(3)
                 min_nights = c5.number_input(
-                    "Min consecutive nights",
+                    "Min nights",
                     min_value=1,
                     value=1,
                     key=f"n_{i}",
                 )
+                max_nights = c6.number_input(
+                    "Max nights (0 = any)",
+                    min_value=0,
+                    value=0,
+                    key=f"mx_{i}",
+                )
                 if site_type_map:
-                    selected_types = c6.multiselect(
+                    selected_types = c7.multiselect(
                         "Site types (optional)",
                         options=list(site_type_map.keys()),
                         format_func=lambda t: f"{t}  ({site_type_map[t]})",
@@ -177,7 +183,7 @@ def _render_results(results: list[dict]) -> None:
                     )
                     site_types = ",".join(selected_types)
                 else:
-                    site_types = c6.text_input(
+                    site_types = c7.text_input(
                         "Site type filter (optional)",
                         placeholder="e.g. STANDARD ELECTRIC",
                         key=f"t_{i}",
@@ -197,6 +203,7 @@ def _render_results(results: list[dict]) -> None:
                                     start_date=start,
                                     end_date=end,
                                     min_nights=int(min_nights),
+                                    max_nights=int(max_nights) if max_nights > 0 else None,
                                     site_types=site_types.strip(),
                                     check_in_day=check_in_day,
                                     check_out_day=check_out_day,

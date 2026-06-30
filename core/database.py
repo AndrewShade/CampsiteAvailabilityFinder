@@ -32,6 +32,7 @@ def _migrate():
     new_columns = [
         ("watchlist_entries", "check_in_day", "TEXT"),
         ("watchlist_entries", "check_out_day", "TEXT"),
+        ("watchlist_entries", "max_nights", "INTEGER"),
     ]
     with _get_engine().connect() as conn:
         for table, column, col_type in new_columns:

@@ -1,6 +1,7 @@
 import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 from .config import get_settings
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,16 @@ def _run_checks() -> None:
                 logger.warning("Failed to check entry %d", entry.id, exc_info=True)
 
 
+def _reset_notifications() -> None:
+    from .database import get_db
+    from .models import AvailabilityResult
+
+    with get_db() as db:
+        db.query(AvailabilityResult).update({"notification_sent": False})
+        db.commit()
+    logger.info("Daily notification reset complete")
+
+
 def get_scheduler() -> BackgroundScheduler:
     if not _scheduler.get_job("availability_check"):
         _scheduler.add_job(
@@ -34,5 +45,11 @@ def get_scheduler() -> BackgroundScheduler:
             trigger=IntervalTrigger(minutes=settings.check_interval_minutes),
             id="availability_check",
             max_instances=1,
+        )
+    if not _scheduler.get_job("notification_reset"):
+        _scheduler.add_job(
+            _reset_notifications,
+            trigger=CronTrigger(hour=0, minute=0),
+            id="notification_reset",
         )
     return _scheduler
